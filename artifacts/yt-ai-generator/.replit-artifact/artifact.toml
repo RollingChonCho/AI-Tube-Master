@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "YouTube AI Generator"
+version = "1.0.0"
+id = "artifacts/yt-ai-generator"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 21533
+
+[services.development]
+run = "pnpm --filter @workspace/yt-ai-generator run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/yt-ai-generator", "run", "build" ]
+publicDir = "artifacts/yt-ai-generator/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "21533"
+BASE_PATH = "/"

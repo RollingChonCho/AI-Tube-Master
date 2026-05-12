@@ -3,13 +3,17 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: YouTube AI Generator API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: youtube
+    description: YouTube data fetching
+  - name: generate
+    description: AI content generation
 paths:
   /healthz:
     get:
@@ -24,6 +28,125 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /youtube/fetch:
+    post:
+      operationId: fetchYouTubeVideo
+      tags: [youtube]
+      summary: Fetch YouTube video metadata
+      description: Fetches title, description, and thumbnail from a YouTube URL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/YouTubeFetchInput"
+      responses:
+        "200":
+          description: Video metadata fetched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeVideoData"
+        "400":
+          description: Invalid URL or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /generate/content:
+    post:
+      operationId: generateContent
+      tags: [generate]
+      summary: Generate titles, description, and tags using AI
+      description: Uses OpenAI to generate 10 catchy titles, full SEO description, and tags
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ContentGenerationInput"
+      responses:
+        "200":
+          description: Generated content
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedContent"
+        "400":
+          description: Invalid input or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /generate/thumbnails:
+    post:
+      operationId: generateThumbnails
+      tags: [generate]
+      summary: Generate thumbnail image variations
+      description: Generates 5-8 thumbnail variations using DALL-E or Replicate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ThumbnailGenerationInput"
+      responses:
+        "200":
+          description: Generated thumbnails
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeneratedThumbnails"
+        "400":
+          description: Invalid input or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /generate/all:
+    post:
+      operationId: generateAll
+      tags: [generate]
+      summary: Generate everything at once (content + thumbnails)
+      description: Orchestrates content and thumbnail generation in parallel
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GenerateAllInput"
+      responses:
+        "200":
+          description: All generated assets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GenerateAllResult"
+        "400":
+          description: Invalid input or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /config/status:
+    get:
+      operationId: getConfigStatus
+      tags: [generate]
+      summary: Check which API keys are configured
+      description: Returns which API keys are set so the frontend can show appropriate UI
+      responses:
+        "200":
+          description: Config status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ConfigStatus"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +157,158 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    YouTubeFetchInput:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          description: YouTube video URL
+
+    YouTubeVideoData:
+      type: object
+      required: [videoId, title, description, thumbnailUrl]
+      properties:
+        videoId:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        thumbnailUrl:
+          type: string
+        channelTitle:
+          type: ["string", "null"]
+        viewCount:
+          type: ["string", "null"]
+        publishedAt:
+          type: ["string", "null"]
+
+    ContentGenerationInput:
+      type: object
+      required: [topic]
+      properties:
+        topic:
+          type: string
+          description: Video topic or title to base generation on
+        description:
+          type: ["string", "null"]
+          description: Optional existing description for context
+        style:
+          type: ["string", "null"]
+          description: Optional style hint (educational, entertainment, tutorial, etc.)
+        targetAudience:
+          type: ["string", "null"]
+          description: Optional target audience
+
+    GeneratedContent:
+      type: object
+      required: [titles, description, tags]
+      properties:
+        titles:
+          type: array
+          items:
+            type: string
+          description: 10 catchy title variations
+        description:
+          type: string
+          description: Full SEO-optimized description
+        tags:
+          type: array
+          items:
+            type: string
+          description: Relevant tags/keywords
+
+    ThumbnailGenerationInput:
+      type: object
+      required: [topic]
+      properties:
+        topic:
+          type: string
+          description: Video topic for thumbnail context
+        style:
+          type: ["string", "null"]
+          description: Visual style for thumbnails
+        count:
+          type: ["integer", "null"]
+          description: Number of thumbnails to generate (5-8)
+
+    ThumbnailImage:
+      type: object
+      required: [url, index]
+      properties:
+        url:
+          type: string
+          description: Image URL (data URI or remote URL)
+        index:
+          type: integer
+        prompt:
+          type: ["string", "null"]
+          description: The prompt used to generate this thumbnail
+
+    GeneratedThumbnails:
+      type: object
+      required: [thumbnails]
+      properties:
+        thumbnails:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThumbnailImage"
+        provider:
+          type: ["string", "null"]
+          description: Which image provider was used (dall-e, replicate)
+
+    GenerateAllInput:
+      type: object
+      required: [topic]
+      properties:
+        topic:
+          type: string
+        description:
+          type: ["string", "null"]
+        style:
+          type: ["string", "null"]
+        targetAudience:
+          type: ["string", "null"]
+        thumbnailCount:
+          type: ["integer", "null"]
+
+    GenerateAllResult:
+      type: object
+      required: [titles, description, tags, thumbnails]
+      properties:
+        titles:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        thumbnails:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThumbnailImage"
+        provider:
+          type: ["string", "null"]
+
+    ConfigStatus:
+      type: object
+      required: [openai, youtube, replicate]
+      properties:
+        openai:
+          type: boolean
+        youtube:
+          type: boolean
+        replicate:
+          type: boolean
