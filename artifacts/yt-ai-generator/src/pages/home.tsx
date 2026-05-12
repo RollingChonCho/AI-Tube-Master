@@ -1,3 +1,14 @@
+// Legacy page — redirected to new LandingPage
+import { useEffect } from "react";
+import { useLocation } from "wouter";
+
+export default function Home() {
+  const [, navigate] = useLocation();
+  useEffect(() => { navigate("/"); }, []);
+  return null;
+}
+
+/*
 import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { 

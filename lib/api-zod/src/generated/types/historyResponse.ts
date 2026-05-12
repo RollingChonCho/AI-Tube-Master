@@ -5,7 +5,8 @@
  * ThumbBoost AI API
  * OpenAPI spec version: 0.1.0
  */
+import type { HistoryItem } from "./historyItem";
 
-export interface YouTubeFetchInput {
-  url: string;
+export interface HistoryResponse {
+  items: HistoryItem[];
 }

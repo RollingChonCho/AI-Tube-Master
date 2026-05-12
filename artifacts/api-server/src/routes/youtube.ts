@@ -8,11 +8,49 @@ function extractVideoId(url: string): string | null {
     /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/|youtube\.com\/v\/)([a-zA-Z0-9_-]{11})/,
     /^([a-zA-Z0-9_-]{11})$/,
   ];
-  for (const pattern of patterns) {
-    const match = url.match(pattern);
-    if (match) return match[1];
+  for (const p of patterns) {
+    const m = url.match(p);
+    if (m) return m[1];
   }
   return null;
+}
+
+// Fetch recent channel videos and analyze thumbnail style
+async function analyzeChannelStyle(channelId: string, apiKey: string): Promise<string | null> {
+  try {
+    const searchUrl = `https://www.googleapis.com/youtube/v3/search?channelId=${channelId}&type=video&order=date&maxResults=6&key=${apiKey}&part=snippet`;
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+
+    const data = await resp.json() as {
+      items?: Array<{
+        snippet?: {
+          title?: string;
+          thumbnails?: { high?: { url?: string } };
+        };
+      }>;
+    };
+
+    if (!data.items?.length) return null;
+
+    // Summarize the style based on titles and thumbnail patterns
+    const titles = data.items.map((i) => i.snippet?.title ?? "").filter(Boolean);
+    const hasNumbers = titles.some((t) => /\d/.test(t));
+    const hasAllCaps = titles.some((t) => t === t.toUpperCase() && t.length > 3);
+    const hasEmoji = titles.some((t) => /\p{Emoji}/u.test(t));
+    const avgTitleLen = titles.reduce((s, t) => s + t.length, 0) / titles.length;
+
+    const traits: string[] = [];
+    if (hasNumbers) traits.push("uses numbered lists");
+    if (hasAllCaps) traits.push("bold all-caps text overlays");
+    if (hasEmoji) traits.push("emoji accents");
+    if (avgTitleLen > 50) traits.push("long descriptive titles");
+    else traits.push("punchy short titles");
+
+    return traits.length > 0 ? traits.join(", ") : null;
+  } catch {
+    return null;
+  }
 }
 
 router.post("/youtube/fetch", async (req, res) => {
@@ -24,7 +62,6 @@ router.post("/youtube/fetch", async (req, res) => {
 
   const { url } = parsed.data;
   const videoId = extractVideoId(url);
-
   if (!videoId) {
     res.status(400).json({ error: "Could not extract video ID from URL" });
     return;
@@ -39,20 +76,18 @@ router.post("/youtube/fetch", async (req, res) => {
   try {
     const apiUrl = `https://www.googleapis.com/youtube/v3/videos?id=${videoId}&key=${apiKey}&part=snippet,statistics`;
     const response = await fetch(apiUrl);
-
     if (!response.ok) {
-      const errText = await response.text();
-      req.log.error({ status: response.status, body: errText }, "YouTube API error");
       res.status(400).json({ error: "YouTube API request failed" });
       return;
     }
 
-    const data = (await response.json()) as {
+    const data = await response.json() as {
       items?: Array<{
         snippet?: {
           title?: string;
           description?: string;
           channelTitle?: string;
+          channelId?: string;
           publishedAt?: string;
           thumbnails?: { maxres?: { url?: string }; high?: { url?: string }; default?: { url?: string } };
         };
@@ -60,7 +95,7 @@ router.post("/youtube/fetch", async (req, res) => {
       }>;
     };
 
-    if (!data.items || data.items.length === 0) {
+    if (!data.items?.length) {
       res.status(400).json({ error: "Video not found" });
       return;
     }
@@ -68,11 +103,11 @@ router.post("/youtube/fetch", async (req, res) => {
     const item = data.items[0];
     const snippet = item.snippet ?? {};
     const statistics = item.statistics ?? {};
-    const thumbnailUrl =
-      snippet.thumbnails?.maxres?.url ??
-      snippet.thumbnails?.high?.url ??
-      snippet.thumbnails?.default?.url ??
-      "";
+    const thumbnailUrl = snippet.thumbnails?.maxres?.url ?? snippet.thumbnails?.high?.url ?? snippet.thumbnails?.default?.url ?? "";
+    const channelId = snippet.channelId ?? null;
+
+    // Analyze channel style in parallel if channelId available
+    const channelThumbnailStyle = channelId ? await analyzeChannelStyle(channelId, apiKey) : null;
 
     res.json({
       videoId,
@@ -80,8 +115,10 @@ router.post("/youtube/fetch", async (req, res) => {
       description: snippet.description ?? "",
       thumbnailUrl,
       channelTitle: snippet.channelTitle ?? null,
+      channelId,
       viewCount: statistics.viewCount ?? null,
       publishedAt: snippet.publishedAt ?? null,
+      channelThumbnailStyle,
     });
   } catch (err) {
     req.log.error({ err }, "Failed to fetch YouTube video");

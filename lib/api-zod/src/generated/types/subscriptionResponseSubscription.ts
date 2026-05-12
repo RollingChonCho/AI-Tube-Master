@@ -6,6 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface YouTubeFetchInput {
-  url: string;
-}
+/**
+ * @nullable
+ */
+export type SubscriptionResponseSubscription = {
+  [key: string]: unknown;
+} | null;

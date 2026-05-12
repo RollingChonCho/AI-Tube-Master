@@ -6,9 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface ThumbnailImage {
-  url: string;
-  index: number;
+export interface CreditsStatus {
+  credits: number;
+  plan: string;
+  totalUsed: number;
   /** @nullable */
-  prompt?: string | null;
+  resetAt?: string | null;
 }

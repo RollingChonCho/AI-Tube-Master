@@ -3,24 +3,25 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: YouTube AI Generator API
+  description: ThumbBoost AI API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
-    description: Health operations
+  - name: auth
   - name: youtube
-    description: YouTube data fetching
   - name: generate
-    description: AI content generation
+  - name: credits
+  - name: history
+  - name: stripe
+  - name: admin
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -29,12 +30,24 @@ paths:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
 
+  /auth/user:
+    get:
+      operationId: getCurrentAuthUser
+      tags: [auth]
+      summary: Get current auth user
+      responses:
+        "200":
+          description: Current user info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GetCurrentAuthUserResponse"
+
   /youtube/fetch:
     post:
       operationId: fetchYouTubeVideo
       tags: [youtube]
       summary: Fetch YouTube video metadata
-      description: Fetches title, description, and thumbnail from a YouTube URL
       requestBody:
         required: true
         content:
@@ -49,59 +62,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/YouTubeVideoData"
         "400":
-          description: Invalid URL or missing API key
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /generate/content:
-    post:
-      operationId: generateContent
-      tags: [generate]
-      summary: Generate titles, description, and tags using AI
-      description: Uses OpenAI to generate 10 catchy titles, full SEO description, and tags
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ContentGenerationInput"
-      responses:
-        "200":
-          description: Generated content
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GeneratedContent"
-        "400":
-          description: Invalid input or missing API key
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /generate/thumbnails:
-    post:
-      operationId: generateThumbnails
-      tags: [generate]
-      summary: Generate thumbnail image variations
-      description: Generates 5-8 thumbnail variations using DALL-E or Replicate
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/ThumbnailGenerationInput"
-      responses:
-        "200":
-          description: Generated thumbnails
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/GeneratedThumbnails"
-        "400":
-          description: Invalid input or missing API key
+          description: Invalid URL
           content:
             application/json:
               schema:
@@ -111,8 +72,7 @@ paths:
     post:
       operationId: generateAll
       tags: [generate]
-      summary: Generate everything at once (content + thumbnails)
-      description: Orchestrates content and thumbnail generation in parallel
+      summary: Generate titles, description, tags, and thumbnails (costs 1 credit)
       requestBody:
         required: true
         content:
@@ -126,8 +86,128 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GenerateAllResult"
-        "400":
-          description: Invalid input or missing API key
+        "402":
+          description: Insufficient credits
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /credits/status:
+    get:
+      operationId: getCreditsStatus
+      tags: [credits]
+      summary: Get current user credit balance and plan info
+      responses:
+        "200":
+          description: Credit status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CreditsStatus"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /history:
+    get:
+      operationId: getHistory
+      tags: [history]
+      summary: Get the current user's generation history
+      responses:
+        "200":
+          description: Generation history
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HistoryResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stripe/products-with-prices:
+    get:
+      operationId: getProductsWithPrices
+      tags: [stripe]
+      summary: Get all active products with their prices
+      responses:
+        "200":
+          description: Products with prices
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductsWithPricesResponse"
+
+  /stripe/checkout:
+    post:
+      operationId: createCheckout
+      tags: [stripe]
+      summary: Create a Stripe checkout session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckoutInput"
+      responses:
+        "200":
+          description: Checkout session URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stripe/portal:
+    post:
+      operationId: createPortalSession
+      tags: [stripe]
+      summary: Create a Stripe customer portal session
+      responses:
+        "200":
+          description: Portal URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PortalResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /stripe/subscription:
+    get:
+      operationId: getSubscription
+      tags: [stripe]
+      summary: Get current user's subscription
+      responses:
+        "200":
+          description: Subscription info
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SubscriptionResponse"
+        "401":
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -138,7 +218,6 @@ paths:
       operationId: getConfigStatus
       tags: [generate]
       summary: Check which API keys are configured
-      description: Returns which API keys are set so the frontend can show appropriate UI
       responses:
         "200":
           description: Config status
@@ -147,6 +226,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/ConfigStatus"
 
+  /admin/users:
+    get:
+      operationId: adminListUsers
+      tags: [admin]
+      summary: Admin — list all users
+      responses:
+        "200":
+          description: Users list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUsersResponse"
+        "403":
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
   schemas:
     HealthStatus:
@@ -154,16 +252,42 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
-      required:
-        - error
+      required: [error]
+
+    GetCurrentAuthUserResponse:
+      type: object
+      properties:
+        isAuthenticated:
+          type: boolean
+        user:
+          $ref: "#/components/schemas/AuthUser"
+
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: ["string", "null"]
+        firstName:
+          type: ["string", "null"]
+        lastName:
+          type: ["string", "null"]
+        profileImageUrl:
+          type: ["string", "null"]
+        plan:
+          type: string
+        credits:
+          type: integer
+        isAdmin:
+          type: integer
 
     YouTubeFetchInput:
       type: object
@@ -171,7 +295,6 @@ components:
       properties:
         url:
           type: string
-          description: YouTube video URL
 
     YouTubeVideoData:
       type: object
@@ -187,84 +310,15 @@ components:
           type: string
         channelTitle:
           type: ["string", "null"]
+        channelId:
+          type: ["string", "null"]
         viewCount:
           type: ["string", "null"]
         publishedAt:
           type: ["string", "null"]
-
-    ContentGenerationInput:
-      type: object
-      required: [topic]
-      properties:
-        topic:
-          type: string
-          description: Video topic or title to base generation on
-        description:
+        channelThumbnailStyle:
           type: ["string", "null"]
-          description: Optional existing description for context
-        style:
-          type: ["string", "null"]
-          description: Optional style hint (educational, entertainment, tutorial, etc.)
-        targetAudience:
-          type: ["string", "null"]
-          description: Optional target audience
-
-    GeneratedContent:
-      type: object
-      required: [titles, description, tags]
-      properties:
-        titles:
-          type: array
-          items:
-            type: string
-          description: 10 catchy title variations
-        description:
-          type: string
-          description: Full SEO-optimized description
-        tags:
-          type: array
-          items:
-            type: string
-          description: Relevant tags/keywords
-
-    ThumbnailGenerationInput:
-      type: object
-      required: [topic]
-      properties:
-        topic:
-          type: string
-          description: Video topic for thumbnail context
-        style:
-          type: ["string", "null"]
-          description: Visual style for thumbnails
-        count:
-          type: ["integer", "null"]
-          description: Number of thumbnails to generate (5-8)
-
-    ThumbnailImage:
-      type: object
-      required: [url, index]
-      properties:
-        url:
-          type: string
-          description: Image URL (data URI or remote URL)
-        index:
-          type: integer
-        prompt:
-          type: ["string", "null"]
-          description: The prompt used to generate this thumbnail
-
-    GeneratedThumbnails:
-      type: object
-      required: [thumbnails]
-      properties:
-        thumbnails:
-          type: array
-          items:
-            $ref: "#/components/schemas/ThumbnailImage"
-        provider:
-          type: ["string", "null"]
-          description: Which image provider was used (dall-e, replicate)
+          description: Summarized visual style of the channel's thumbnails for prompting
 
     GenerateAllInput:
       type: object
@@ -278,12 +332,26 @@ components:
           type: ["string", "null"]
         targetAudience:
           type: ["string", "null"]
+        channelStyle:
+          type: ["string", "null"]
+          description: Channel visual style to match
         thumbnailCount:
           type: ["integer", "null"]
 
+    ThumbnailImage:
+      type: object
+      required: [url, index]
+      properties:
+        url:
+          type: string
+        index:
+          type: integer
+        prompt:
+          type: ["string", "null"]
+
     GenerateAllResult:
       type: object
-      required: [titles, description, tags, thumbnails]
+      required: [titles, description, tags, thumbnails, generationId]
       properties:
         titles:
           type: array
@@ -301,6 +369,127 @@ components:
             $ref: "#/components/schemas/ThumbnailImage"
         provider:
           type: ["string", "null"]
+        generationId:
+          type: string
+        creditsRemaining:
+          type: integer
+
+    CreditsStatus:
+      type: object
+      required: [credits, plan, totalUsed]
+      properties:
+        credits:
+          type: integer
+        plan:
+          type: string
+        totalUsed:
+          type: integer
+        resetAt:
+          type: ["string", "null"]
+
+    HistoryItem:
+      type: object
+      required: [id, topic, createdAt]
+      properties:
+        id:
+          type: string
+        topic:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+        titles:
+          type: array
+          items:
+            type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        thumbnails:
+          type: array
+          items:
+            $ref: "#/components/schemas/ThumbnailImage"
+        provider:
+          type: ["string", "null"]
+        createdAt:
+          type: string
+
+    HistoryResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/HistoryItem"
+
+    ProductPrice:
+      type: object
+      properties:
+        id:
+          type: string
+        unit_amount:
+          type: ["integer", "null"]
+        currency:
+          type: string
+        recurring:
+          type: ["object", "null"]
+        active:
+          type: boolean
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: ["string", "null"]
+        active:
+          type: boolean
+        prices:
+          type: array
+          items:
+            $ref: "#/components/schemas/ProductPrice"
+
+    ProductsWithPricesResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+
+    CheckoutInput:
+      type: object
+      required: [priceId]
+      properties:
+        priceId:
+          type: string
+
+    CheckoutResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    PortalResponse:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    SubscriptionResponse:
+      type: object
+      properties:
+        subscription:
+          type: ["object", "null"]
 
     ConfigStatus:
       type: object
@@ -312,3 +501,14 @@ components:
           type: boolean
         replicate:
           type: boolean
+
+    AdminUsersResponse:
+      type: object
+      required: [users, total]
+      properties:
+        users:
+          type: array
+          items:
+            $ref: "#/components/schemas/AuthUser"
+        total:
+          type: integer

@@ -6,6 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface YouTubeFetchInput {
+export interface PortalResponse {
   url: string;
 }

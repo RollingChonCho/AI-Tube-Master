@@ -7,13 +7,16 @@
  */
 import type { ThumbnailImage } from "./thumbnailImage";
 
-export interface GenerateAllResult {
-  titles: string[];
-  description: string;
-  tags: string[];
-  thumbnails: ThumbnailImage[];
+export interface HistoryItem {
+  id: string;
+  topic: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  titles?: string[];
+  description?: string;
+  tags?: string[];
+  thumbnails?: ThumbnailImage[];
   /** @nullable */
   provider?: string | null;
-  generationId: string;
-  creditsRemaining?: number;
+  createdAt: string;
 }
